@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:dist": "node scripts/build-dist.js",
     "start": "next start",
     "lint": "next lint"
   },
