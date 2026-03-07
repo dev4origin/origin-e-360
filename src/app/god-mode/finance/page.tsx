@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { FinanceDashboard } from "@/lib/types";
 import {
@@ -290,17 +291,31 @@ export default function FinancePage() {
             Revenus, abonnements et paiements
           </p>
         </div>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
-          style={{
-            color: "var(--gm-text-muted)",
-            borderColor: "var(--gm-border)",
-          }}
-        >
-          <RefreshCw size={14} />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/god-mode/finance/metrics"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
+            style={{
+              color: "var(--gm-accent)",
+              borderColor: "var(--gm-accent)",
+            }}
+            title="Métriques SaaS avancées"
+          >
+            <TrendingUp size={14} />
+            Métriques
+          </Link>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
+            style={{
+              color: "var(--gm-text-muted)",
+              borderColor: "var(--gm-border)",
+            }}
+          >
+            <RefreshCw size={14} />
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Top KPIs */}
