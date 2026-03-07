@@ -92,7 +92,10 @@ function StatCard({
             {label}
           </p>
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold" style={{ color: "var(--gm-text)" }}>
+            <p
+              className="text-2xl font-bold"
+              style={{ color: "var(--gm-text)" }}
+            >
               {value}
             </p>
             {unit && (
@@ -111,7 +114,10 @@ function StatCard({
               ) : (
                 <ArrowDown size={12} style={{ color: trendColor }} />
               )}
-              <span className="text-[11px] font-medium" style={{ color: trendColor }}>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: trendColor }}
+              >
                 {Math.abs(trend).toFixed(1)}% {trendLabel}
               </span>
             </div>
@@ -138,19 +144,28 @@ export default function MetricsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [licensesRes, tiersRes, revenueRes, fournisseursRes] = await Promise.all([
-        supabase
-          .from("licenses")
-          .select("id, fournisseur_id, tier, payment_period, is_active, expires_at, starts_at, created_at")
-          .order("created_at", { ascending: false }),
-        supabase.from("subscription_tiers").select("tier, price_monthly, price_quarterly, price_biannual, price_annual"),
-        supabase
-          .from("revenue_daily")
-          .select("report_date, new_subscriptions, churned_subscriptions, mrr_contribution, currency")
-          .order("report_date", { ascending: true })
-          .limit(90),
-        supabase.from("fournisseurs").select("id, subscription_status"),
-      ]);
+      const [licensesRes, tiersRes, revenueRes, fournisseursRes] =
+        await Promise.all([
+          supabase
+            .from("licenses")
+            .select(
+              "id, fournisseur_id, tier, payment_period, is_active, expires_at, starts_at, created_at",
+            )
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("subscription_tiers")
+            .select(
+              "tier, price_monthly, price_quarterly, price_biannual, price_annual",
+            ),
+          supabase
+            .from("revenue_daily")
+            .select(
+              "report_date, new_subscriptions, churned_subscriptions, mrr_contribution, currency",
+            )
+            .order("report_date", { ascending: true })
+            .limit(90),
+          supabase.from("fournisseurs").select("id, subscription_status"),
+        ]);
 
       if (licensesRes.error) throw licensesRes.error;
       if (tiersRes.error) throw tiersRes.error;
@@ -178,14 +193,28 @@ export default function MetricsPage() {
       );
 
       // Calculate ARR (Annual Recurring Revenue)
-      const activeLicenses = licenses.filter((l) => l.is_active && new Date(l.expires_at) > new Date());
+      const activeLicenses = licenses.filter(
+        (l) => l.is_active && new Date(l.expires_at) > new Date(),
+      );
       let arr = 0;
 
       activeLicenses.forEach((license) => {
         const prices = tierPriceMap.get(license.tier);
         if (prices) {
-          const period = (license.payment_period || "monthly") as "monthly" | "quarterly" | "biannual" | "annual";
-          const monthlyValue = prices[period] / (period === "monthly" ? 1 : period === "quarterly" ? 3 : period === "biannual" ? 6 : 12);
+          const period = (license.payment_period || "monthly") as
+            | "monthly"
+            | "quarterly"
+            | "biannual"
+            | "annual";
+          const monthlyValue =
+            prices[period] /
+            (period === "monthly"
+              ? 1
+              : period === "quarterly"
+                ? 3
+                : period === "biannual"
+                  ? 6
+                  : 12);
           arr += monthlyValue * 12;
         }
       });
@@ -197,38 +226,62 @@ export default function MetricsPage() {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const recentRevenue = revenue.filter((r) => new Date(r.report_date) >= thirtyDaysAgo);
-      const totalChurned = recentRevenue.reduce((sum, r) => sum + r.churned_subscriptions, 0);
-      const totalNew = recentRevenue.reduce((sum, r) => sum + r.new_subscriptions, 0);
-      const churnRate = activeLicenses.length > 0 ? (totalChurned / activeLicenses.length) * 100 : 0;
+      const recentRevenue = revenue.filter(
+        (r) => new Date(r.report_date) >= thirtyDaysAgo,
+      );
+      const totalChurned = recentRevenue.reduce(
+        (sum, r) => sum + r.churned_subscriptions,
+        0,
+      );
+      const totalNew = recentRevenue.reduce(
+        (sum, r) => sum + r.new_subscriptions,
+        0,
+      );
+      const churnRate =
+        activeLicenses.length > 0
+          ? (totalChurned / activeLicenses.length) * 100
+          : 0;
 
       // Calculate NRR (Net Revenue Retention)
       // Simplified: comparing last 30 days vs previous 30 days
-      const mrrNow = recentRevenue.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
+      const mrrNow =
+        recentRevenue.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
       const sixtyDaysAgo = new Date();
       sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 30);
 
       const prevRevenue = revenue.filter(
-        (r) => new Date(r.report_date) >= sixtyDaysAgo && new Date(r.report_date) < twoMonthsAgo,
+        (r) =>
+          new Date(r.report_date) >= sixtyDaysAgo &&
+          new Date(r.report_date) < twoMonthsAgo,
       );
-      const mrrPrev = prevRevenue.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
+      const mrrPrev =
+        prevRevenue.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
       const nrrPercent = mrrPrev > 0 ? (mrrNow / mrrPrev) * 100 : 100;
 
       // Calculate Growth Rate (month-over-month)
-      const lastMonth = revenue.filter((r) => new Date(r.report_date) >= thirtyDaysAgo);
-      const currentMRR = lastMonth.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
-      const growthRate = mrrPrev > 0 ? (((currentMRR - mrrPrev) / mrrPrev) * 100) : 0;
+      const lastMonth = revenue.filter(
+        (r) => new Date(r.report_date) >= thirtyDaysAgo,
+      );
+      const currentMRR =
+        lastMonth.reduce((sum, r) => sum + r.mrr_contribution, 0) || mrr;
+      const growthRate =
+        mrrPrev > 0 ? ((currentMRR - mrrPrev) / mrrPrev) * 100 : 0;
 
       // Active customers count
       const activeCustomers = new Set(
-        licenses.filter((l) => l.is_active && new Date(l.expires_at) > new Date()).map((l) => l.fournisseur_id),
+        licenses
+          .filter((l) => l.is_active && new Date(l.expires_at) > new Date())
+          .map((l) => l.fournisseur_id),
       ).size;
 
       // Build trend data (last 90 days)
       const trendData = revenue.map((r) => ({
-        date: new Date(r.report_date).toLocaleDateString("fr-FR", { month: "short", day: "numeric" }),
+        date: new Date(r.report_date).toLocaleDateString("fr-FR", {
+          month: "short",
+          day: "numeric",
+        }),
         mrr: r.mrr_contribution || 0,
         arr: (r.mrr_contribution || 0) * 12,
         churn: r.churned_subscriptions || 0,
@@ -308,7 +361,10 @@ export default function MetricsPage() {
 
       {/* Critical KPIs */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--gm-text)" }}>
+        <h2
+          className="text-sm font-semibold"
+          style={{ color: "var(--gm-text)" }}
+        >
           🔴 Indicateurs Critiques
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -331,7 +387,13 @@ export default function MetricsPage() {
             value={kpis.nrrPercent.toFixed(1)}
             unit="%"
             icon={<TrendingUp size={20} />}
-            color={kpis.nrrPercent > 110 ? "#22c55e" : kpis.nrrPercent > 100 ? "#f59e0b" : "#ef4444"}
+            color={
+              kpis.nrrPercent > 110
+                ? "#22c55e"
+                : kpis.nrrPercent > 100
+                  ? "#f59e0b"
+                  : "#ef4444"
+            }
             trend={kpis.nrrPercent - 100}
             trendLabel="vs baseline 100%"
           />
@@ -340,7 +402,13 @@ export default function MetricsPage() {
             value={kpis.churnRate.toFixed(2)}
             unit="%"
             icon={<ArrowDown size={20} />}
-            color={kpis.churnRate < 5 ? "#22c55e" : kpis.churnRate < 10 ? "#f59e0b" : "#ef4444"}
+            color={
+              kpis.churnRate < 5
+                ? "#22c55e"
+                : kpis.churnRate < 10
+                  ? "#f59e0b"
+                  : "#ef4444"
+            }
             trend={-kpis.churnRate}
             trendLabel="clients perdus"
           />
@@ -349,7 +417,10 @@ export default function MetricsPage() {
 
       {/* Growth Metrics */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--gm-text)" }}>
+        <h2
+          className="text-sm font-semibold"
+          style={{ color: "var(--gm-text)" }}
+        >
           📈 Croissance & Santé
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -358,7 +429,13 @@ export default function MetricsPage() {
             value={kpis.growthRate.toFixed(2)}
             unit="%"
             icon={<TrendingUp size={20} />}
-            color={kpis.growthRate > 5 ? "#22c55e" : kpis.growthRate > 0 ? "#f59e0b" : "#ef4444"}
+            color={
+              kpis.growthRate > 5
+                ? "#22c55e"
+                : kpis.growthRate > 0
+                  ? "#f59e0b"
+                  : "#ef4444"
+            }
             trend={kpis.growthRate}
             trendLabel="vs mois précédent"
           />
@@ -370,9 +447,27 @@ export default function MetricsPage() {
           />
           <StatCard
             label="Santé Business"
-            value={kpis.nrrPercent > 110 ? "Excellente" : kpis.nrrPercent > 100 ? "Bonne" : "Alerte"}
-            icon={kpis.nrrPercent > 110 ? <TrendingUp size={20} /> : <AlertTriangle size={20} />}
-            color={kpis.nrrPercent > 110 ? "#22c55e" : kpis.nrrPercent > 100 ? "#f59e0b" : "#ef4444"}
+            value={
+              kpis.nrrPercent > 110
+                ? "Excellente"
+                : kpis.nrrPercent > 100
+                  ? "Bonne"
+                  : "Alerte"
+            }
+            icon={
+              kpis.nrrPercent > 110 ? (
+                <TrendingUp size={20} />
+              ) : (
+                <AlertTriangle size={20} />
+              )
+            }
+            color={
+              kpis.nrrPercent > 110
+                ? "#22c55e"
+                : kpis.nrrPercent > 100
+                  ? "#f59e0b"
+                  : "#ef4444"
+            }
           />
         </div>
       </div>
@@ -385,14 +480,19 @@ export default function MetricsPage() {
           borderColor: "var(--gm-border)",
         }}
       >
-        <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--gm-text)" }}>
+        <h2
+          className="text-sm font-semibold mb-4"
+          style={{ color: "var(--gm-text)" }}
+        >
           📊 Benchmarks SaaS
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span style={{ color: "var(--gm-text-muted)" }}>NRR Target</span>
-              <span style={{ color: "#22c55e", fontWeight: "bold" }}>&gt; 110%</span>
+              <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+                &gt; 110%
+              </span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2">
               <div
@@ -403,14 +503,19 @@ export default function MetricsPage() {
               />
             </div>
             <p className="text-xs" style={{ color: "var(--gm-text-muted)" }}>
-              Actuel : {kpis.nrrPercent.toFixed(1)}% {kpis.nrrPercent > 110 ? "✅" : "⚠️"}
+              Actuel : {kpis.nrrPercent.toFixed(1)}%{" "}
+              {kpis.nrrPercent > 110 ? "✅" : "⚠️"}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span style={{ color: "var(--gm-text-muted)" }}>Churn Target</span>
-              <span style={{ color: "#22c55e", fontWeight: "bold" }}>&lt; 5%</span>
+              <span style={{ color: "var(--gm-text-muted)" }}>
+                Churn Target
+              </span>
+              <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+                &lt; 5%
+              </span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2">
               <div
@@ -421,14 +526,19 @@ export default function MetricsPage() {
               />
             </div>
             <p className="text-xs" style={{ color: "var(--gm-text-muted)" }}>
-              Actuel : {kpis.churnRate.toFixed(2)}% {kpis.churnRate < 5 ? "✅" : "⚠️"}
+              Actuel : {kpis.churnRate.toFixed(2)}%{" "}
+              {kpis.churnRate < 5 ? "✅" : "⚠️"}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span style={{ color: "var(--gm-text-muted)" }}>Growth Target</span>
-              <span style={{ color: "#22c55e", fontWeight: "bold" }}>&gt; 5%/mois</span>
+              <span style={{ color: "var(--gm-text-muted)" }}>
+                Growth Target
+              </span>
+              <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+                &gt; 5%/mois
+              </span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2">
               <div
@@ -439,14 +549,17 @@ export default function MetricsPage() {
               />
             </div>
             <p className="text-xs" style={{ color: "var(--gm-text-muted)" }}>
-              Actuel : {kpis.growthRate.toFixed(2)}% {kpis.growthRate > 5 ? "✅" : "⚠️"}
+              Actuel : {kpis.growthRate.toFixed(2)}%{" "}
+              {kpis.growthRate > 5 ? "✅" : "⚠️"}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span style={{ color: "var(--gm-text-muted)" }}>ARR Target</span>
-              <span style={{ color: "#22c55e", fontWeight: "bold" }}>&gt; 0</span>
+              <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+                &gt; 0
+              </span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2">
               <div
@@ -465,7 +578,10 @@ export default function MetricsPage() {
 
       {/* Trend Charts */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--gm-text)" }}>
+        <h2
+          className="text-sm font-semibold"
+          style={{ color: "var(--gm-text)" }}
+        >
           📉 Tendances (90 jours)
         </h2>
 
@@ -477,7 +593,10 @@ export default function MetricsPage() {
             borderColor: "var(--gm-border)",
           }}
         >
-          <h3 className="text-xs font-semibold mb-3" style={{ color: "var(--gm-text)" }}>
+          <h3
+            className="text-xs font-semibold mb-3"
+            style={{ color: "var(--gm-text)" }}
+          >
             MRR Trend
           </h3>
           <ResponsiveContainer width="100%" height={250}>
@@ -487,7 +606,10 @@ export default function MetricsPage() {
                 stroke="var(--gm-text-muted)"
                 style={{ fontSize: "12px" }}
               />
-              <YAxis stroke="var(--gm-text-muted)" style={{ fontSize: "12px" }} />
+              <YAxis
+                stroke="var(--gm-text-muted)"
+                style={{ fontSize: "12px" }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "var(--gm-bg)",
@@ -514,7 +636,10 @@ export default function MetricsPage() {
             borderColor: "var(--gm-border)",
           }}
         >
-          <h3 className="text-xs font-semibold mb-3" style={{ color: "var(--gm-text)" }}>
+          <h3
+            className="text-xs font-semibold mb-3"
+            style={{ color: "var(--gm-text)" }}
+          >
             Churn Trend (clients perdus/jour)
           </h3>
           <ResponsiveContainer width="100%" height={250}>
@@ -524,7 +649,10 @@ export default function MetricsPage() {
                 stroke="var(--gm-text-muted)"
                 style={{ fontSize: "12px" }}
               />
-              <YAxis stroke="var(--gm-text-muted)" style={{ fontSize: "12px" }} />
+              <YAxis
+                stroke="var(--gm-text-muted)"
+                style={{ fontSize: "12px" }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "var(--gm-bg)",
@@ -557,20 +685,26 @@ export default function MetricsPage() {
             <AlertTriangle size={16} />
             Alertes
           </h3>
-          <ul className="space-y-1 text-sm" style={{ color: "var(--gm-text-muted)" }}>
+          <ul
+            className="space-y-1 text-sm"
+            style={{ color: "var(--gm-text-muted)" }}
+          >
             {kpis.nrrPercent < 100 && (
               <li>
-                ⚠️ NRR &lt; 100% : Les revenus diminuent. Attention au churn et expansion clients.
+                ⚠️ NRR &lt; 100% : Les revenus diminuent. Attention au churn et
+                expansion clients.
               </li>
             )}
             {kpis.churnRate > 5 && (
               <li>
-                ⚠️ Churn &gt; 5% : Taux de résiliation élevé. À investiguer urgement.
+                ⚠️ Churn &gt; 5% : Taux de résiliation élevé. À investiguer
+                urgement.
               </li>
             )}
             {kpis.growthRate < 0 && (
               <li>
-                ⚠️ Croissance négative : MRR en baisse. Renforcer acquisition et fidélisation.
+                ⚠️ Croissance négative : MRR en baisse. Renforcer acquisition et
+                fidélisation.
               </li>
             )}
           </ul>

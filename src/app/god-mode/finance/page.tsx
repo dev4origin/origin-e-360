@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { FinanceDashboard } from "@/lib/types";
 import {
@@ -13,6 +12,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -118,12 +118,23 @@ export default function FinancePage() {
     setError(null);
     try {
       // Fetch all data in parallel
-      const [licensesRes, tiersRes, fournisseursRes, paymentsRes] = await Promise.all([
-        supabase.from("licenses").select("id, tier, payment_period, is_active, expires_at"),
-        supabase.from("subscription_tiers").select("tier, price_monthly, price_quarterly, price_biannual, price_annual"),
-        supabase.from("fournisseurs").select("id, nom, subscription_status"),
-        supabase.from("payment_proofs").select("*").order("created_at", { ascending: false }).limit(50),
-      ]);
+      const [licensesRes, tiersRes, fournisseursRes, paymentsRes] =
+        await Promise.all([
+          supabase
+            .from("licenses")
+            .select("id, tier, payment_period, is_active, expires_at"),
+          supabase
+            .from("subscription_tiers")
+            .select(
+              "tier, price_monthly, price_quarterly, price_biannual, price_annual",
+            ),
+          supabase.from("fournisseurs").select("id, nom, subscription_status"),
+          supabase
+            .from("payment_proofs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(50),
+        ]);
 
       if (licensesRes.error) throw licensesRes.error;
       if (tiersRes.error) throw tiersRes.error;
@@ -147,11 +158,16 @@ export default function FinancePage() {
         if (!tp) return 0;
         const period = l.payment_period || "monthly";
         switch (period) {
-          case "monthly": return tp.price_monthly || 0;
-          case "quarterly": return Math.round((tp.price_quarterly || 0) / 3);
-          case "biannual": return Math.round((tp.price_biannual || 0) / 6);
-          case "annual": return Math.round((tp.price_annual || 0) / 12);
-          default: return 0;
+          case "monthly":
+            return tp.price_monthly || 0;
+          case "quarterly":
+            return Math.round((tp.price_quarterly || 0) / 3);
+          case "biannual":
+            return Math.round((tp.price_biannual || 0) / 6);
+          case "annual":
+            return Math.round((tp.price_annual || 0) / 12);
+          default:
+            return 0;
         }
       };
 
@@ -160,16 +176,24 @@ export default function FinancePage() {
         if (!tp) return 0;
         const period = l.payment_period || "monthly";
         switch (period) {
-          case "monthly": return (tp.price_monthly || 0) * 12;
-          case "quarterly": return (tp.price_quarterly || 0) * 4;
-          case "biannual": return (tp.price_biannual || 0) * 2;
-          case "annual": return tp.price_annual || 0;
-          default: return 0;
+          case "monthly":
+            return (tp.price_monthly || 0) * 12;
+          case "quarterly":
+            return (tp.price_quarterly || 0) * 4;
+          case "biannual":
+            return (tp.price_biannual || 0) * 2;
+          case "annual":
+            return tp.price_annual || 0;
+          default:
+            return 0;
         }
       };
 
       // Group by tier
-      const byTierMap = new Map<string, { tier: string; count: number; mrr_contribution: number }>();
+      const byTierMap = new Map<
+        string,
+        { tier: string; count: number; mrr_contribution: number }
+      >();
       activeLicenses.forEach((l) => {
         const existing = byTierMap.get(l.tier);
         const mrr = getMrr(l);
@@ -177,7 +201,11 @@ export default function FinancePage() {
           existing.count += 1;
           existing.mrr_contribution += mrr;
         } else {
-          byTierMap.set(l.tier, { tier: l.tier, count: 1, mrr_contribution: mrr });
+          byTierMap.set(l.tier, {
+            tier: l.tier,
+            count: 1,
+            mrr_contribution: mrr,
+          });
         }
       });
 
@@ -196,7 +224,7 @@ export default function FinancePage() {
       const in30Days = new Date();
       in30Days.setDate(in30Days.getDate() + 30);
       const expiringSoon = activeLicenses.filter(
-        (l) => l.expires_at && new Date(l.expires_at) <= in30Days
+        (l) => l.expires_at && new Date(l.expires_at) <= in30Days,
       ).length;
 
       // Payments
@@ -303,6 +331,18 @@ export default function FinancePage() {
           >
             <TrendingUp size={14} />
             Métriques
+          </Link>
+          <Link
+            href="/god-mode/finance/advanced"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
+            style={{
+              color: "var(--gm-accent)",
+              borderColor: "var(--gm-accent)",
+            }}
+            title="NPS, Segments et Santé des Tiers"
+          >
+            <Users size={14} />
+            Analyse Avancée
           </Link>
           <button
             onClick={fetchData}
@@ -498,7 +538,9 @@ export default function FinancePage() {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span style={{ color: "var(--gm-text-muted)" }}>{item.label}</span>
+                  <span style={{ color: "var(--gm-text-muted)" }}>
+                    {item.label}
+                  </span>
                   <span
                     className="ml-auto font-semibold"
                     style={{ color: "var(--gm-text)" }}
@@ -620,7 +662,10 @@ export default function FinancePage() {
                   >
                     {p.org_name}
                   </p>
-                  <p className="text-xs" style={{ color: "var(--gm-text-muted)" }}>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--gm-text-muted)" }}
+                  >
                     {fmt(p.amount)} FCFA •{" "}
                     {new Date(p.reviewed_at).toLocaleDateString("fr-FR")}
                   </p>
