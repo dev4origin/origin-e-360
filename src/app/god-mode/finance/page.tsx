@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { FinanceDashboard } from "@/lib/types";
 import {
   AlertTriangle,
+  Calendar,
   CheckCircle,
   CreditCard,
   DollarSign,
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   TrendingUp,
   Users,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -343,6 +345,30 @@ export default function FinancePage() {
           >
             <Users size={14} />
             Analyse Avancée
+          </Link>
+          <Link
+            href="/god-mode/finance/growth"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
+            style={{
+              color: "var(--gm-accent)",
+              borderColor: "var(--gm-accent)",
+            }}
+            title="CAC, LTV, Burn Rate & Unit Economics"
+          >
+            <Zap size={14} />
+            Croissance
+          </Link>
+          <Link
+            href="/god-mode/finance/predictive"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border hover:bg-white/5 transition-colors"
+            style={{
+              color: "var(--gm-accent)",
+              borderColor: "var(--gm-accent)",
+            }}
+            title="Cohortes, Parcours Client & Prédictions IA"
+          >
+            <Calendar size={14} />
+            Analyse Prédictive
           </Link>
           <button
             onClick={fetchData}
